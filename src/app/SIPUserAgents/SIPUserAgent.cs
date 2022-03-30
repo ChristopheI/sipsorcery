@@ -860,6 +860,11 @@ namespace SIPSorcery.SIP.App
                 MediaSession.SetMediaStreamStatus(SDPMediaTypesEnum.video, streamStatus);
             }
 
+            if (MediaSession.HasVideoSecondary)
+            {
+                MediaSession.SetMediaStreamStatus(SDPMediaTypesEnum.videoSecondary, streamStatus);
+            }
+
             var sdp = MediaSession.CreateOffer(null);
             SendReInviteRequest(sdp);
         }
@@ -980,6 +985,11 @@ namespace SIPSorcery.SIP.App
                             if (MediaSession.HasVideo)
                             {
                                 MediaSession.SetMediaStreamStatus(SDPMediaTypesEnum.video, GetStreamStatusForOnHoldState());
+                            }
+
+                            if (MediaSession.HasVideoSecondary)
+                            {
+                                MediaSession.SetMediaStreamStatus(SDPMediaTypesEnum.videoSecondary, GetStreamStatusForOnHoldState());
                             }
 
                             var answerSdp = MediaSession.CreateAnswer(null);
@@ -1122,6 +1132,11 @@ namespace SIPSorcery.SIP.App
                     if (MediaSession.HasVideo)
                     {
                         MediaSession.SetMediaStreamStatus(SDPMediaTypesEnum.video, MediaStreamStatusEnum.SendRecv);
+                    }
+
+                    if (MediaSession.HasVideoSecondary)
+                    {
+                        MediaSession.SetMediaStreamStatus(SDPMediaTypesEnum.videoSecondary, MediaStreamStatusEnum.SendRecv);
                     }
 
                     // The norefersub supported header means am event subscription is not expected.
@@ -1364,6 +1379,11 @@ namespace SIPSorcery.SIP.App
             if (MediaSession.HasVideo)
             {
                 MediaSession.SetMediaStreamStatus(SDPMediaTypesEnum.video, MediaStreamStatusEnum.SendRecv);
+            }
+
+            if (MediaSession.HasVideoSecondary)
+            {
+                MediaSession.SetMediaStreamStatus(SDPMediaTypesEnum.videoSecondary, MediaStreamStatusEnum.SendRecv);
             }
 
             // Get the BYE request for the original dialog so it can be sent if answering the transfer call succeeds.

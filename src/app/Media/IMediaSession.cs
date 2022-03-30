@@ -50,6 +50,12 @@ namespace SIPSorcery.SIP.App
         /// </summary>
         bool HasVideo { get; }
 
+
+        /// <summary>
+        /// Indicates whether the session supports video secondary.
+        /// </summary>
+        bool HasVideoSecondary { get; }
+
         /// <summary>
         /// Indicates whether the session has been closed.
         /// </summary>

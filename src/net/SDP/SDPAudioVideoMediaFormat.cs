@@ -17,6 +17,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Extensions.Logging;
 using SIPSorceryMedia.Abstractions;
 
 namespace SIPSorcery.Net
@@ -34,6 +35,8 @@ namespace SIPSorcery.Net
     /// </remarks>
     public struct SDPAudioVideoMediaFormat
     {
+        private static ILogger logger = Sys.Log.Logger;
+
         public const int DYNAMIC_ID_MIN = 96;
         public const int DYNAMIC_ID_MAX = 127;
         public const int DEFAULT_AUDIO_CHANNEL_COUNT = 1;
@@ -115,6 +118,8 @@ namespace SIPSorcery.Net
         /// </summary>
         public SDPAudioVideoMediaFormat(SDPWellKnownMediaFormatsEnum knownFormat)
         {
+            // /!\ Here it doesn't matter if we are dealing with SDPMediaTypesEnum.video or SDPMediaTypesEnum.videoSecondary
+
             Kind = AudioVideoWellKnown.WellKnownAudioFormats.ContainsKey(knownFormat) ? SDPMediaTypesEnum.audio :
                 SDPMediaTypesEnum.video;
             ID = (int)knownFormat;
@@ -202,10 +207,10 @@ namespace SIPSorcery.Net
         /// equivalent information to the SDP format object but has well defined video properties separate
         /// from the SDP serialisation.
         /// </summary>
-        /// <param name="videoFormat">The Video Format to map to an SDP format.</param>
-        public SDPAudioVideoMediaFormat(VideoFormat videoFormat)
+        /// <param name="secondary">Is it the Video secondary stream.</param>
+        public SDPAudioVideoMediaFormat(VideoFormat videoFormat, Boolean secondary)
         {
-            Kind = SDPMediaTypesEnum.video;
+            Kind = secondary ? SDPMediaTypesEnum.videoSecondary : SDPMediaTypesEnum.video;
             ID = videoFormat.FormatID;
             Rtpmap = null;
             Fmtp = videoFormat.Parameters;
@@ -214,15 +219,13 @@ namespace SIPSorcery.Net
             Rtpmap = SetRtpmap(videoFormat.FormatName, videoFormat.ClockRate);
         }
 
-        private string SetRtpmap(string name, int clockRate, int channels = DEFAULT_AUDIO_CHANNEL_COUNT)
-            =>
-             Kind == SDPMediaTypesEnum.video ? $"{name}/{clockRate}" :
-            (channels == DEFAULT_AUDIO_CHANNEL_COUNT) ? $"{name}/{clockRate}" : $"{name}/{clockRate}/{channels}";
+        private string SetRtpmap(string name, int clockRate, int channels = DEFAULT_AUDIO_CHANNEL_COUNT) =>
+             Kind == SDPMediaTypesEnum.audio ? (channels == DEFAULT_AUDIO_CHANNEL_COUNT) ? $"{name}/{clockRate}" : $"{name}/{clockRate}/{channels}" : $"{name}/{clockRate}";
         public bool IsEmpty() => _isEmpty;
-        public int ClockRate() => Kind == SDPMediaTypesEnum.video ? ToVideoFormat().ClockRate : ToAudioFormat().ClockRate;
+        public int ClockRate() => Kind == SDPMediaTypesEnum.audio ? ToAudioFormat().ClockRate : ToVideoFormat().ClockRate;
         public int Channels() =>
-             Kind == SDPMediaTypesEnum.video ? 0 :
-            TryParseRtpmap(Rtpmap, out _, out _, out var channels) ? channels : DEFAULT_AUDIO_CHANNEL_COUNT;
+             Kind == SDPMediaTypesEnum.audio ? TryParseRtpmap(Rtpmap, out _, out _, out var channels) ? channels : DEFAULT_AUDIO_CHANNEL_COUNT : 0;
+
 
         public string Name()
         {

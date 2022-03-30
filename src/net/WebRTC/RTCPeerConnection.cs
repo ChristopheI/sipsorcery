@@ -872,12 +872,14 @@ namespace SIPSorcery.Net
 
             var audioLocalTrack = localTracks.Find(a => a.Kind == SDPMediaTypesEnum.audio);
             var videoLocalTrack = localTracks.Find(a => a.Kind == SDPMediaTypesEnum.video);
+            var videoSecondaryLocalTrack = localTracks.Find(a => a.Kind == SDPMediaTypesEnum.videoSecondary);
 
             var audioCapabilities = audioLocalTrack?.Capabilities;
             var videoCapabilities = videoLocalTrack?.Capabilities;
+            var videoSecondaryCapabilities = videoSecondaryLocalTrack?.Capabilities;
 
             bool excludeIceCandidates = options != null && options.X_ExcludeIceCandidates;
-            var offerSdp = createBaseSdp(localTracks, audioCapabilities, videoCapabilities, excludeIceCandidates);
+            var offerSdp = createBaseSdp(localTracks, audioCapabilities, videoCapabilities, videoSecondaryCapabilities, excludeIceCandidates);
 
             foreach (var ann in offerSdp.Media)
             {
@@ -950,6 +952,8 @@ namespace SIPSorcery.Net
                     SDPAudioVideoMediaFormat.GetCompatibleFormats(AudioLocalTrack.Capabilities, AudioRemoteTrack.Capabilities) : null;
                 var videoCapabilities = (VideoLocalTrack != null && VideoRemoteTrack != null) ?
                     SDPAudioVideoMediaFormat.GetCompatibleFormats(VideoLocalTrack.Capabilities, VideoRemoteTrack.Capabilities) : null;
+                var videoSecondaryCapabilities = (VideoSecondaryLocalTrack != null && VideoSecondaryRemoteTrack != null) ?
+                    SDPAudioVideoMediaFormat.GetCompatibleFormats(VideoSecondaryLocalTrack.Capabilities, VideoSecondaryRemoteTrack.Capabilities) : null;
 
                 List<MediaStreamTrack> localTracks = GetLocalTracks();
 
@@ -959,7 +963,8 @@ namespace SIPSorcery.Net
                     if (localTrack != null && localTrack.StreamStatus == MediaStreamStatusEnum.Inactive)
                     {
                         if ((localTrack.Kind == SDPMediaTypesEnum.audio && AudioRemoteTrack != null && AudioRemoteTrack.StreamStatus != MediaStreamStatusEnum.Inactive) ||
-                            (localTrack.Kind == SDPMediaTypesEnum.video && VideoRemoteTrack != null && VideoRemoteTrack.StreamStatus != MediaStreamStatusEnum.Inactive))
+                            (localTrack.Kind == SDPMediaTypesEnum.video && VideoRemoteTrack != null && VideoRemoteTrack.StreamStatus != MediaStreamStatusEnum.Inactive) ||
+                            (localTrack.Kind == SDPMediaTypesEnum.videoSecondary && VideoSecondaryRemoteTrack != null && VideoSecondaryRemoteTrack.StreamStatus != MediaStreamStatusEnum.Inactive))
                         {
                             localTrack.StreamStatus = localTrack.DefaultStreamStatus;
                         }
@@ -967,7 +972,7 @@ namespace SIPSorcery.Net
                 }
 
                 bool excludeIceCandidates = options != null && options.X_ExcludeIceCandidates;
-                var answerSdp = createBaseSdp(localTracks, audioCapabilities, videoCapabilities, excludeIceCandidates);
+                var answerSdp = createBaseSdp(localTracks, audioCapabilities, videoCapabilities, videoSecondaryCapabilities, excludeIceCandidates);
 
                 //if (answerSdp.Media.Any(x => x.Media == SDPMediaTypesEnum.audio))
                 //{
@@ -1024,6 +1029,9 @@ namespace SIPSorcery.Net
         /// <param name="videoCapabilities">Optional. The video formats to support in the SDP. This list can differ from
         /// the local video track if an answer is being generated and only mutually supported formats are being
         /// used.</param>
+        /// <param name="videoCapabilities">Optional. The video secondary formats to support in the SDP. This list can differ from
+        /// the local secondary video track if an answer is being generated and only mutually supported formats are being
+        /// used.</param>
         /// <param name="excludeIceCandidates">If true it indicates the caller does not want ICE candidates added
         /// to the SDP.</param>
         /// <remarks>
@@ -1036,6 +1044,7 @@ namespace SIPSorcery.Net
         private SDP createBaseSdp(List<MediaStreamTrack> tracks,
             List<SDPAudioVideoMediaFormat> audioCapabilities,
             List<SDPAudioVideoMediaFormat> videoCapabilities,
+            List<SDPAudioVideoMediaFormat> videoSecondaryCapabilities,
             bool excludeIceCandidates = false)
         {
             // Make sure the ICE gathering of local IP addresses is complete.
@@ -1089,10 +1098,25 @@ namespace SIPSorcery.Net
                 }
                 else
                 {
+                    List<SDPAudioVideoMediaFormat> list;
+
+                    if (track.Kind == SDPMediaTypesEnum.video)
+                    {
+                        list = videoCapabilities;
+                    }
+                    else if (track.Kind == SDPMediaTypesEnum.videoSecondary)
+                    {
+                        list = videoSecondaryCapabilities;
+                    }
+                    else
+                    {
+                        list = audioCapabilities;
+                    }
+
                     SDPMediaAnnouncement announcement = new SDPMediaAnnouncement(
                      track.Kind,
                      SDP.IGNORE_RTP_PORT_NUMBER,
-                     (track.Kind == SDPMediaTypesEnum.video) ? videoCapabilities : audioCapabilities);
+                     list);
 
                     announcement.Transport = RTP_MEDIA_PROFILE;
                     announcement.Connection = new SDPConnectionInformation(IPAddress.Any);
@@ -1116,8 +1140,20 @@ namespace SIPSorcery.Net
 
                     if (track.Ssrc != 0)
                     {
-                        string trackCname = track.Kind == SDPMediaTypesEnum.video ?
-                       VideoRtcpSession?.Cname : AudioRtcpSession?.Cname;
+                        string trackCname = null;
+
+                        if (track.Kind == SDPMediaTypesEnum.video)
+                        {
+                            trackCname = VideoRtcpSession?.Cname;
+                        }
+                        else if (track.Kind == SDPMediaTypesEnum.videoSecondary)
+                        {
+                            trackCname = VideoSecondaryRtcpSession?.Cname;
+                        }
+                        else if (track.Kind == SDPMediaTypesEnum.audio)
+                        {
+                            trackCname = AudioRtcpSession?.Cname;
+                        }
 
                         if (trackCname != null)
                         {
@@ -1650,7 +1686,7 @@ namespace SIPSorcery.Net
                     logger.LogDebug($"RTCPeerConnection remote certificate fingerprint matched expected value of {remoteFingerprint.value} for {remoteFingerprint.algorithm}.");
 
                     base.SetSecurityContext(
-                        new List<SDPMediaTypesEnum> { SDPMediaTypesEnum.audio, SDPMediaTypesEnum.video, SDPMediaTypesEnum.application },
+                        new List<SDPMediaTypesEnum> { SDPMediaTypesEnum.audio, SDPMediaTypesEnum.video, SDPMediaTypesEnum.videoSecondary, SDPMediaTypesEnum.application },
                         dtlsHandle.ProtectRTP,
                         dtlsHandle.UnprotectRTP,
                         dtlsHandle.ProtectRTCP,

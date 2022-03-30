@@ -218,24 +218,28 @@ namespace SIPSorcery.Net
         /// Add a local video track.
         /// </summary>
         /// <param name="format">The video format that the local application supports.</param>
+        /// <param name="secondary">Optional. is the video secondary stream
         /// <param name="streamStatus">Optional. The stream status for the video track, e.g. whether
         /// send and receive or only one of.</param>
         public MediaStreamTrack(
            VideoFormat format,
+           Boolean secondary = false,
            MediaStreamStatusEnum streamStatus = MediaStreamStatusEnum.SendRecv) :
-            this(SDPMediaTypesEnum.video, false, new List<SDPAudioVideoMediaFormat> { new SDPAudioVideoMediaFormat(format) }, streamStatus)
+            this(secondary ? SDPMediaTypesEnum.videoSecondary : SDPMediaTypesEnum.video, false, new List<SDPAudioVideoMediaFormat> { new SDPAudioVideoMediaFormat(format, secondary) }, streamStatus)
         { }
 
         /// <summary>
         /// Add a local video track.
         /// </summary>
         /// <param name="videoFormats">The video formats that the local application supports.</param>
+        /// <param name="secondary">Optional. is the video secondary stream
         /// <param name="streamStatus">Optional. The stream status for the video track, e.g. whether
         /// send and receive or only one of.</param>
         public MediaStreamTrack(
         List<VideoFormat> formats,
+        Boolean secondary = false,
         MediaStreamStatusEnum streamStatus = MediaStreamStatusEnum.SendRecv) :
-             this(SDPMediaTypesEnum.video, false, formats.Select(x => new SDPAudioVideoMediaFormat(x)).ToList(), streamStatus)
+             this(secondary ? SDPMediaTypesEnum.videoSecondary : SDPMediaTypesEnum.video, false, formats.Select(x => new SDPAudioVideoMediaFormat(x, secondary)).ToList(), streamStatus)
         { }
 
         /// <summary>

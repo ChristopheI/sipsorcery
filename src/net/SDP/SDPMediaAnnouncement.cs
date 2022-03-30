@@ -236,6 +236,8 @@ namespace SIPSorcery.Net
 
         public void ParseMediaFormats(string formatList)
         {
+            // /!\ Here it doesn't matter if we are dealing with SDPMediaTypesEnum.video or SDPMediaTypesEnum.videoSecondary
+
             if (!String.IsNullOrWhiteSpace(formatList))
             {
                 string[] formatIDs = Regex.Split(formatList, @"\s");
@@ -275,7 +277,10 @@ namespace SIPSorcery.Net
 
         public override string ToString()
         {
-            string announcement = "m=" + Media + " " + Port + " " + Transport + " " + GetFormatListToString() + m_CRLF;
+            SDPMediaTypesEnum media = (Media == SDPMediaTypesEnum.videoSecondary) ? SDPMediaTypesEnum.video : Media;
+
+            string announcement = "m=" + media + " " + Port + " " + Transport + " " + GetFormatListToString() + m_CRLF;
+
 
             announcement += !string.IsNullOrWhiteSpace(MediaDescription) ? "i=" + MediaDescription + m_CRLF : null;
 
